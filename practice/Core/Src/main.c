@@ -34,7 +34,7 @@
 /* USER CODE BEGIN PD */
 int counter = 0;
 
-int digit[7][10] = {
+const int digit[7][10] = {
 		{1,0,1,1,0,1,1,1,1,1},
 		{1,1,1,1,1,0,0,1,1,1},
 		{1,1,0,1,1,1,1,1,1,1},
@@ -63,7 +63,7 @@ osThreadId_t myTask02Handle;
 const osThreadAttr_t myTask02_attributes = {
   .name = "myTask02",
   .stack_size = 128 * 4,
-  .priority = (osPriority_t) osPriorityLow,
+  .priority = (osPriority_t) osPriorityHigh,
 };
 /* Definitions for myTask03 */
 osThreadId_t myTask03Handle;
@@ -260,8 +260,8 @@ static void MX_GPIO_Init(void)
 
   /*Configure GPIO pin : PE3 */
   GPIO_InitStruct.Pin = GPIO_PIN_3;
-  GPIO_InitStruct.Mode = GPIO_MODE_IT_FALLING;
-  GPIO_InitStruct.Pull = GPIO_PULLDOWN;
+  GPIO_InitStruct.Mode = GPIO_MODE_INPUT;
+  GPIO_InitStruct.Pull = GPIO_PULLUP;
   HAL_GPIO_Init(GPIOE, &GPIO_InitStruct);
 
   /*Configure GPIO pins : PC0 PC1 PC2 PC3
@@ -275,16 +275,9 @@ static void MX_GPIO_Init(void)
 
   /*Configure GPIO pin : PA0 */
   GPIO_InitStruct.Pin = GPIO_PIN_0;
-  GPIO_InitStruct.Mode = GPIO_MODE_IT_RISING;
+  GPIO_InitStruct.Mode = GPIO_MODE_INPUT;
   GPIO_InitStruct.Pull = GPIO_PULLDOWN;
   HAL_GPIO_Init(GPIOA, &GPIO_InitStruct);
-
-  /* EXTI interrupt init*/
-  HAL_NVIC_SetPriority(EXTI0_IRQn, 5, 0);
-  HAL_NVIC_EnableIRQ(EXTI0_IRQn);
-
-  HAL_NVIC_SetPriority(EXTI3_IRQn, 5, 0);
-  HAL_NVIC_EnableIRQ(EXTI3_IRQn);
 
 }
 
@@ -333,11 +326,10 @@ void StartDefaultTask(void *argument)
     	 if(counter < 9)
     		 counter++;
 
-    	 osMessageQueuePut(myQueue01Handle, &counter, NULL, osWaitForever);
-
+    	 osMessageQueuePut(myQueue01Handle, &counter, 1, osWaitForever);
     	 osSemaphoreRelease(myBinarySem01Handle);
 	 }
-	 osDelay(1);
+	 osDelay(500);
   }
   /* USER CODE END 5 */
 }
@@ -355,14 +347,15 @@ void StartTask02(void *argument)
   /* Infinite loop */
   for(;;)
   {
-	  if(HAL_GPIO_ReadPin(GPIOE, GPIO_PIN_3) == GPIO_PIN_SET)
+	  if(HAL_GPIO_ReadPin(GPIOE, GPIO_PIN_3) == GPIO_PIN_RESET)
 	  {
 		  if(counter > 0)
+		  {
 		 	counter--;
-
-	    osMessageQueuePut(myQueue01Handle, &counter, NULL, osWaitForever);
+		 	osMessageQueuePut(myQueue01Handle, &counter, 1, osWaitForever);
+		  }
 	  }
-	  osDelay(1);
+	  osDelay(500);
   }
   /* USER CODE END StartTask02 */
 }
@@ -384,7 +377,7 @@ void StartTask03(void *argument)
 	osSemaphoreAcquire(myBinarySem01Handle, osWaitForever);
 	HAL_GPIO_TogglePin(GPIOC, GPIO_PIN_7);
   }
-  osThreadTerminate(NULL);
+  // osThreadTerminate(NULL);
   /* USER CODE END StartTask03 */
 }
 
@@ -399,21 +392,21 @@ void StartTask04(void *argument)
 {
   /* USER CODE BEGIN StartTask04 */
   /* Infinite loop */
-  osEvent evt;
+  osStatus_t status;
   for(;;)
   {
     osDelay(1);
-    evt = osMessageQueueGet(myQueue01Handle, &counter, NULL, 1);
-    if(evt.status == osEventMessage)
-    	counter = evt.value.v;
-
-    HAL_GPIO_WritePin(GPIOC, GPIO_PIN_0, digit[0][counter]^1);
-    HAL_GPIO_WritePin(GPIOC, GPIO_PIN_1, digit[1][counter]^1);
-    HAL_GPIO_WritePin(GPIOC, GPIO_PIN_2, digit[2][counter]^1);
-    HAL_GPIO_WritePin(GPIOC, GPIO_PIN_3, digit[3][counter]^1);
-    HAL_GPIO_WritePin(GPIOC, GPIO_PIN_4, digit[4][counter]^1);
-    HAL_GPIO_WritePin(GPIOC, GPIO_PIN_5, digit[5][counter]^1);
-    HAL_GPIO_WritePin(GPIOC, GPIO_PIN_6, digit[6][counter]^1);
+    status = osMessageQueueGet(myQueue01Handle, &counter, NULL, osWaitForever);
+    if(status == osOK)
+    {
+		HAL_GPIO_WritePin(GPIOC, GPIO_PIN_0, digit[0][counter]^1);
+		HAL_GPIO_WritePin(GPIOC, GPIO_PIN_1, digit[1][counter]^1);
+		HAL_GPIO_WritePin(GPIOC, GPIO_PIN_2, digit[2][counter]^1);
+		HAL_GPIO_WritePin(GPIOC, GPIO_PIN_3, digit[3][counter]^1);
+		HAL_GPIO_WritePin(GPIOC, GPIO_PIN_4, digit[4][counter]^1);
+		HAL_GPIO_WritePin(GPIOC, GPIO_PIN_5, digit[5][counter]^1);
+		HAL_GPIO_WritePin(GPIOC, GPIO_PIN_6, digit[6][counter]^1);
+    }
   }
   /* USER CODE END StartTask04 */
 }
